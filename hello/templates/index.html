@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+
+{% block content %}
+<!-- Load Uppy CSS bundle. It is advisable to install Uppy
+  from npm/yarn instead, and pick and choose the plugins/styles you need.
+  But for experimenting, you can use Transloadit’s CDN, Edgly: -->
+
+
+  <link rel="stylesheet" href="https://releases.transloadit.com/uppy/v1.23.2/uppy.min.css">
+
+<div class="card-group">
+ 
+<div class="card mycard"  > 
+  <div class="card-body">
+    <h5 class="card-title2">Drag-Drop your saved model folder </h5>
+    <p class="card-text2">Drag-Drop your .zip file within saved_model folder or .h5 file and label.txt file to convert </p>
+    <div class="UppyDragDrop2"></div>
+  </div>
+  
+  <div class="for-ProgressBar2"></div>
+  
+   
+  <div class="uploaded-files2">
+    <h5>Uploaded files:</h5>
+    <ol></ol>
+  </div>
+  <div class="converted-files2">
+    <h5>Converted files:</h5>
+    <ol></ol>
+  </div>
+</div>
+</div>
+  <!-- Load Uppy JS bundle. -->
+  <script src="https://releases.transloadit.com/uppy/v1.23.2/uppy.min.js"></script> 
+  <script>
+    
+$(document).ready(function(){
+  
+    // ----------------------------------------------------------------
+    var uppy2 = Uppy.Core({
+      debug: true,
+      autoProceed: true, 
+    });
+    uppy2.use(Uppy.DragDrop, {
+      target: '.UppyDragDrop2', 
+    }); 
+    uppy2.use(Uppy.ProgressBar, {
+      target: '.for-ProgressBar2',
+       hideAfterFinish: false
+    });
+    uppy2.use(Uppy.Tus, { endpoint: 'https://master.tus.io/files/' });
+    uppy2.on('upload-success', function (file, response) {
+      var url = response.uploadURL
+      var fileName = file.name  
+      waitingDialog.show('Please wait, your model is being processed');
+      $.ajax({
+        type: "POST",
+        dataType: "json",
+        headers: {'X-CSRFToken': '{{ csrf_token }}'},
+        url: '/tfconverter',  // buraya saved model to .tflite yaz 
+        data: {
+            'url': url , 
+            'name' : fileName,
+        },
+        success: function (response) { 
+              console.log(response)
+              fileName = fileName.split(".")
+              waitingDialog.hide()
+              $("#exampleModal").modal('toggle'); 
+              document.querySelector('.converted-files2 ol').innerHTML +=
+            '<li><a href="static/converted_models/'+fileName[fileName.length-2]+'/model.tflite" target="_blank"> '+fileName[fileName.length-2]+'/model.tflite </a></li>'
+            document.querySelector('.converted-files2 ol').innerHTML +=
+            '<li><a href="static/converted_models/'+fileName[fileName.length-2]+'/label.txt" target="_blank">'+fileName[fileName.length-2]+'/label.txt</a></li>'
+        }
+        }); 
+      document.querySelector('.uploaded-files2 ol').innerHTML +=
+        '<li><a href="' + url + '" target="_blank">' + fileName + '</a></li>'
+    });
+});
+  
+  </script>
+{% endblock %}
